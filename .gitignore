@@ -1,3 +1,29 @@
-.venv/
-__pycache__/
+# Environment variables
 .env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# MLflow
+mlflow/mlflow.db
+mlflow/*.db
+mlruns/
+artifacts/
+
+# Trained models
+models/*.joblib
+models/*.pkl
+models/*.pickle
+
+# Logs
+*.log
+
+# OS
+.DS_Store

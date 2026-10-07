@@ -1,212 +1,140 @@
 services:
 
   # ==========================================
-  # PostgreSQL - Application Database
-  # ==========================================
-  postgres:
-    image: postgres:16
-    container_name: glucorisk-postgres
-    restart: unless-stopped
-
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-
-    ports:
-      - "${POSTGRES_PORT}:5432"
-
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-
-  # ==========================================
-  # pgAdmin
-  # ==========================================
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: glucorisk-pgadmin
-    restart: unless-stopped
-
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
-
-    ports:
-      - "5050:80"
-
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-
-  # ==========================================
   # MLflow
   # ==========================================
+
   mlflow:
     build:
       context: .
       dockerfile: Dockerfile
-
     container_name: glucorisk-mlflow
     restart: unless-stopped
-
     environment:
       MLFLOW_TRACKING_URI: http://mlflow:5000
-
     ports:
       - "5000:5000"
-
     volumes:
-      - ./mlruns:/mlruns
+      - ./mlflow:/mlflow
       - ./artifacts:/artifacts
-
-    depends_on:
-      postgres:
-        condition: service_healthy
-
     command: >
+      sh -c "
+      mlflow db upgrade sqlite:////mlflow/mlflow.db
+      &&
       mlflow server
       --host 0.0.0.0
       --port 5000
-      --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      --default-artifact-root /artifacts
-
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /artifacts
+      --serve-artifacts
+      "
 
   # ==========================================
   # FastAPI
   # ==========================================
+
   api:
     build:
       context: .
       dockerfile: Dockerfile
-
     container_name: glucorisk-api
     restart: unless-stopped
-
     command: >
       uvicorn api.main:app
       --host 0.0.0.0
       --port 8000
       --reload
-
     ports:
       - "8000:8000"
-
     env_file:
       - .env
-
     environment:
       MLFLOW_TRACKING_URI: http://mlflow:5000
-
     volumes:
       - ./api:/app/api
       - ./src:/app/src
       - ./models:/app/models
-
     depends_on:
       - mlflow
-
 
   # ==========================================
   # Streamlit
   # ==========================================
+
   streamlit:
     build:
       context: .
       dockerfile: Dockerfile
-
     container_name: glucorisk-streamlit
     restart: unless-stopped
-
     command: >
       streamlit run streamlit/app.py
       --server.address=0.0.0.0
       --server.port=8501
-
     ports:
       - "8501:8501"
-
     env_file:
       - .env
-
     environment:
       API_URL: http://api:8000
-
     volumes:
       - ./streamlit:/app/streamlit
-
     depends_on:
       - api
-
 
   # ==========================================
   # Airflow PostgreSQL
   # ==========================================
+
   airflow-db:
     image: postgres:16
     container_name: glucorisk-airflow-db
     restart: unless-stopped
-
     environment:
       POSTGRES_DB: ${AIRFLOW_DB_NAME}
       POSTGRES_USER: ${AIRFLOW_DB_USER}
       POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD}
-
     volumes:
       - airflow_db_data:/var/lib/postgresql/data
-
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${AIRFLOW_DB_USER} -d ${AIRFLOW_DB_NAME}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${AIRFLOW_DB_USER} -d ${AIRFLOW_DB_NAME}"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
 
-
   # ==========================================
   # Airflow
   # ==========================================
+
   airflow:
     image: apache/airflow:3.0.6
-
     container_name: glucorisk-airflow
     restart: unless-stopped
-
     depends_on:
       airflow-db:
         condition: service_healthy
-
     env_file:
       - .env
-
     environment:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-db:5432/${AIRFLOW_DB_NAME}
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       PYTHONPATH: /opt/airflow
-
-      POSTGRES_HOST: postgres
+      POSTGRES_HOST: airflow-db
       POSTGRES_PORT: 5432
-
     working_dir: /opt/airflow
-
     volumes:
       - .:/opt/airflow
-
     ports:
       - "8080:8080"
-
     command: standalone
-
 
 # ==========================================
 # Persistent Volumes
 # ==========================================
+
 volumes:
-  postgres_data:
   airflow_db_data:
