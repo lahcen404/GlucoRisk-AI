@@ -6,6 +6,7 @@ matplotlib
 seaborn
 imbalanced-learn
 mlflow
+psycopg[binary]
 fastapi
 uvicorn
 streamlit
