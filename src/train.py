@@ -166,7 +166,7 @@ def fit_final_kmeans(X_scaled, k):
     model = KMeans(
         n_clusters=k,
         random_state=RANDOM_STATE,
-        n_init=10,
+        n_init=10,  # Run K-Means 10 times with different initial centroid positions and keep the best result
     )
 
     labels = model.fit_predict(X_scaled)
@@ -212,7 +212,7 @@ def calculate_metrics(y_true, y_pred):
             y_true,
             y_pred,
             pos_label="High Risk",
-            zero_division=0,
+            zero_division=0, # if the calculation would divide by zero, return 0 instead of giving me a warning/error
         ),
 
         "Recall": recall_score(
@@ -506,8 +506,8 @@ def tune_svm(
         param_grid=parameter_grid,
         cv=5,
         scoring=f1_scorer,
-        n_jobs=-1,
-        verbose=1,
+        n_jobs=-1, # controls how many CPU cores can be used
+        verbose=1, # controls how much information is printed
     )
 
     search.fit(
@@ -897,7 +897,7 @@ for model_name, model in models.items():
     baseline_results.append(
         {
             "Model": model_name,
-            **metrics,
+            **metrics, # ** : Unpack the dictionary into keyword arguments
         }
     )
 
