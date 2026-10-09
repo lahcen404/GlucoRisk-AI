@@ -112,7 +112,9 @@ services:
   # ==========================================
 
   airflow:
-    image: apache/airflow:3.0.6
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile
     container_name: glucorisk-airflow
     restart: unless-stopped
     depends_on:
@@ -132,6 +134,7 @@ services:
     ports:
       - "8080:8080"
     command: standalone
+
 
 # ==========================================
 # Persistent Volumes

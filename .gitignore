@@ -27,3 +27,5 @@ models/*.pickle
 
 # OS
 .DS_Store
+
+simple_auth_manager_passwords.json.generated
