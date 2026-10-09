@@ -24,7 +24,7 @@ def predict(patient: PatientRequest):
     prediction = model.predict(data)[0]
     
     return{
-        "predictiooon": str(prediction)
+        "prediction": str(prediction)
     }
     
     
